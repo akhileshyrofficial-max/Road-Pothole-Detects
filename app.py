@@ -39,19 +39,56 @@ sam_loaded = False
 
 def init_sam():
     """
-    Initialize SAM model from a pre-downloaded checkpoint.
+    Initialize SAM model:
+    - Downloads checkpoint if missing
+    - Supports retries with exponential backoff
+    - Loads model to device (CPU or GPU)
     """
     global predictor, sam_loaded
     try:
+        import requests
+        import time
+
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Using device: {device}")
 
-        # Path to the model is now controlled by an environment variable
         checkpoint = os.environ.get('SAM_CHECKPOINT_PATH')
-        if not checkpoint or not os.path.exists(checkpoint):
-            logger.error("SAM checkpoint not found. Set SAM_CHECKPOINT_PATH or ensure model is downloaded.")
+        if not checkpoint:
+            logger.error("SAM_CHECKPOINT_PATH environment variable not set. Cannot load model.")
             sam_loaded = False
             return False
+
+        # Check if model exists and is valid, otherwise download it
+        if not os.path.exists(checkpoint) or os.path.getsize(checkpoint) < 1000000:
+            logger.info(f"SAM checkpoint not found or incomplete at {checkpoint}. Downloading...")
+
+            # Ensure parent directory exists
+            os.makedirs(os.path.dirname(checkpoint), exist_ok=True)
+
+            checkpoint_url = os.environ.get(
+                'SAM_CHECKPOINT_URL',
+                "https://huggingface.co/lllyasviel/Annotators/resolve/main/sam_vit_b_01ec64.pth"
+            )
+
+            max_attempts = 5
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    with requests.get(checkpoint_url, stream=True, timeout=120) as r:
+                        r.raise_for_status()
+                        with open(checkpoint, 'wb') as f:
+                            for chunk in r.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                    logger.info("SAM checkpoint downloaded successfully!")
+                    break
+                except Exception as e:
+                    wait = min(30, 2 ** attempt)
+                    logger.error(f"Download attempt {attempt}/{max_attempts} failed: {e}. Retrying in {wait}s...")
+                    time.sleep(wait)
+            else:
+                logger.error("Failed to download SAM checkpoint after retries. SAM will not be loaded.")
+                sam_loaded = False
+                return False
 
         # Load SAM
         logger.info(f"Loading SAM from checkpoint: {checkpoint}")

@@ -7,36 +7,6 @@ services:
       set -e
       pip install --upgrade pip
       pip install -r requirements.txt
-
-      echo "--- Build Script Start ---"
-      echo "DATA_DIR is: $DATA_DIR"
-      echo "SAM_CHECKPOINT_PATH is: $SAM_CHECKPOINT_PATH"
-
-      echo "Creating base data directory at /var/data..."
-      mkdir -p /var/data
-
-      echo "Checking for SAM model at $SAM_CHECKPOINT_PATH..."
-      if [ -f "$SAM_CHECKPOINT_PATH" ] && [ $(stat -c%s "$SAM_CHECKPOINT_PATH") -gt 1000000 ]; then
-        echo "SAM model found and is larger than 1MB."
-      else
-        echo "SAM model not found or is too small. Downloading..."
-        curl -Lf --retry 3 "https://huggingface.co/lllyasviel/Annotators/resolve/main/sam_vit_b_01ec64.pth" -o "$SAM_CHECKPOINT_PATH"
-        echo "SAM model downloaded."
-      fi
-
-      echo "Verifying downloaded model..."
-      if [ -f "$SAM_CHECKPOINT_PATH" ] && [ $(stat -c%s "$SAM_CHECKPOINT_PATH") -gt 1000000 ]; then
-        echo "Verification successful. Model exists and is larger than 1MB."
-      else
-        echo "Verification FAILED. Model not found or is too small after download."
-        echo "Listing contents of /var/data:"
-        ls -l /var/data
-        exit 1
-      fi
-
-      echo "Ensuring uploads directory exists at $DATA_DIR..."
-      mkdir -p "$DATA_DIR"
-      echo "--- Build Script End ---"
     startCommand: "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app"
     envVars:
       - key: PYTHON_VERSION
