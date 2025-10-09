@@ -7,6 +7,10 @@ services:
       set -e
       pip install --upgrade pip
       pip install -r requirements.txt
+      FILE_ID=1ahDEKaYuK52FtbTixhAuNSqdUFq2sZij
+      OUT=/opt/render/project/src/uploads/sam_vit_b_01ec64.pth
+      mkdir -p /opt/render/project/src/uploads
+      curl -L -o $OUT "https://drive.google.com/uc?export=download&id=${FILE_ID}"
     startCommand: "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app"
     envVars:
       - key: PYTHON_VERSION
@@ -16,12 +20,12 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATA_DIR
-        value: "/var/data/uploads"
+        value: "/opt/render/project/src/uploads"
       - key: SAM_CHECKPOINT_PATH
-        value: "/var/data/sam_vit_b_01ec64.pth"
+        value: "/opt/render/project/src/uploads/sam_vit_b_01ec64.pth"
       - key: PYTHONPATH
         value: "."
     disk:
       name: pothole-data
-      mountPath: /var/data
+      mountPath: /opt/render/project/src/uploads
       sizeGB: 1
