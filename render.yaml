@@ -4,12 +4,20 @@ services:
     env: python
     plan: starter
     buildCommand: |
+      set -e
       pip install --upgrade pip
       pip install -r requirements.txt
-      # Download SAM model if it doesn't exist
-      if [ ! -f "$SAM_CHECKPOINT_PATH" ]; then
-        curl -L "https://huggingface.co/lllyasviel/Annotators/resolve/main/sam_vit_b_01ec64.pth" -o "$SAM_CHECKPOINT_PATH"
+      echo "Checking for SAM model..."
+      if [ -f "$SAM_CHECKPOINT_PATH" ] && [ $(stat -c%s "$SAM_CHECKPOINT_PATH") -gt 1000000 ]; then
+        echo "SAM model found and looks complete."
+      else
+        echo "SAM model not found or incomplete. Downloading..."
+        mkdir -p "$(dirname "$SAM_CHECKPOINT_PATH")"
+        curl -Lf --retry 3 "https://huggingface.co/lllyasviel/Annotators/resolve/main/sam_vit_b_01ec64.pth" -o "$SAM_CHECKPOINT_PATH"
+        echo "SAM model downloaded."
       fi
+      # Ensure the uploads directory exists
+      mkdir -p "$DATA_DIR"
     startCommand: "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app"
     envVars:
       - key: PYTHON_VERSION
