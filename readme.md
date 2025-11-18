@@ -36,6 +36,8 @@ Run the app:
 
 python app.py
 
-# Test update for PR creation
+# Test update for PR creations
+
+
 
 The SAM model will be downloaded automatically if missing.
