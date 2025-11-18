@@ -1,0 +1,11 @@
+review:
+  level: deep
+  auto_review_on:
+    - pull_request
+  ignore_files:
+    - "*.md"
+    - "dist/*"
+
+llm:
+  provider: openai
+  model: gpt-4o
